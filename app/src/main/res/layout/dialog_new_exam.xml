@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical">
+
+    <EditText
+        android:id="@+id/et_exam_title"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:inputType="textCapWords"
+        android:hint="Exam name (Dept-Subject-Exam-App)"
+        android:layout_margin="18dp"/>
+
+    <EditText
+        android:id="@+id/et_exam_questions_count"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:inputType="number"
+        android:hint="Expected number of questions"
+        android:layout_margin="18dp"/>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginHorizontal="4dp"
+        android:layout_marginVertical="18dp">
+        <Button
+            android:id="@+id/btn_create_exam"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:text="Create"
+            android:layout_marginHorizontal="8dp"/>
+        <Button
+            android:id="@+id/btn_cancel_exam"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:backgroundTint="@color/cardview_light_background"
+            android:textColor="@color/black"
+            android:layout_marginHorizontal="8dp"
+            android:text="Cancel"/>
+    </LinearLayout>
+
+</LinearLayout>
