@@ -30,10 +30,14 @@ import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.bumptech.glide.Glide;
 import com.example.examfriend.Utils.Utils;
 import com.example.examfriend.pojos.Question;
+import com.github.chrisbanes.photoview.PhotoView;
+import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.OnFailureListener;
 import com.google.android.gms.tasks.OnSuccessListener;
+import com.google.android.gms.tasks.Task;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.storage.FirebaseStorage;
@@ -44,6 +48,8 @@ import java.io.ByteArrayOutputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
+import java.lang.ref.WeakReference;
+import java.nio.ByteBuffer;
 
 public class QuestionDetailsActivity extends AppCompatActivity {
     
@@ -62,12 +68,13 @@ public class QuestionDetailsActivity extends AppCompatActivity {
     private EditText etQuestion, etAnswer;
     private ImageButton btnEditAnswer, btnChangeAnswer, btnCancelChangeAnswer;
     private ImageButton btnEditQuestion, btnChangeQuestion, btnCancelChangeQuestion;
-    private ImageView imgQuestionPhoto;
+    private PhotoView imgQuestionPhoto;
     private Button btnUploadPhoto;
 
 //    firebase
     private DatabaseReference rootRef = FirebaseDatabase.getInstance().getReference("Questions");
     private StorageReference storageRef = FirebaseStorage.getInstance().getReference("Exams");
+    private StorageReference photoRef;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -85,10 +92,7 @@ public class QuestionDetailsActivity extends AppCompatActivity {
         if (questionPosition != -1){
             getSupportActionBar().setTitle("Q."+ String.valueOf(questionPosition+1));
         }
-
         setTexts();
-
-
     }
 
     private void setTexts() {
@@ -105,6 +109,24 @@ public class QuestionDetailsActivity extends AppCompatActivity {
             imgQuestionPhoto.setVisibility(View.VISIBLE);
             btnUploadPhoto.setVisibility(View.GONE);
         }
+
+//        check if photo is present
+        photoRef = storageRef.child(examUid).child(String.valueOf(questionPosition));
+        photoRef.getDownloadUrl()
+                .addOnSuccessListener(uri -> {
+//                file is present
+                    btnUploadPhoto.setVisibility(View.GONE);
+                    imgQuestionPhoto.setVisibility(View.VISIBLE);
+                    Glide.with(this).load(uri.toString()).into(imgQuestionPhoto);
+                    Log.d(TAG, "onSuccess: File is present already!");
+                })
+                .addOnFailureListener(e -> {
+//                file not found , proceed to upload if wanted
+                    btnUploadPhoto.setVisibility(View.VISIBLE);
+                    imgQuestionPhoto.setVisibility(View.GONE);
+                    Log.d(TAG, "onFailure: File not found!");
+                    Log.d(TAG, "onFailure: "+ e.getLocalizedMessage());
+                });
     }
 
     private void initViews() {
@@ -139,7 +161,7 @@ public class QuestionDetailsActivity extends AppCompatActivity {
 //                   take photo
                    if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA)
                            != PackageManager.PERMISSION_GRANTED){
-                       Toast.makeText(this, "permission not granted!", Toast.LENGTH_SHORT).show();
+                       Toast.makeText(this, "Please approve permission!", Toast.LENGTH_SHORT).show();
                        ActivityCompat.requestPermissions(this, new String[] {Manifest.permission.CAMERA}, REQUEST_CAMERA);
                        return;
                    }
@@ -148,8 +170,14 @@ public class QuestionDetailsActivity extends AppCompatActivity {
                    break;
                case 1:
 //                   open gallery
-                   Intent galleryIntent = new Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI);
-                   galleryIntent.setType("images/*");
+                   if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE)
+                           != PackageManager.PERMISSION_GRANTED){
+                       Toast.makeText(this, "Please approve permission!", Toast.LENGTH_SHORT).show();
+                       ActivityCompat.requestPermissions(this, new String[] {Manifest.permission.READ_EXTERNAL_STORAGE}, REQUEST_GALLERY);
+                       return;
+                   }
+                   Intent galleryIntent = new Intent(Intent.ACTION_GET_CONTENT);
+                   galleryIntent.setType("image/*");
                    startActivityForResult(Intent.createChooser(galleryIntent, "Select Image"), REQUEST_GALLERY);
                    break;
                case 2:
@@ -174,8 +202,8 @@ public class QuestionDetailsActivity extends AppCompatActivity {
                     break;
                 case REQUEST_GALLERY:
                     Toast.makeText(this, "Opening Gallery", Toast.LENGTH_SHORT).show();
-                    Intent galleryIntent = new Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI);
-                    galleryIntent.setType("images/*");
+                    Intent galleryIntent = new Intent(Intent.ACTION_GET_CONTENT);
+                    galleryIntent.setType("image/*");
                     startActivityForResult(Intent.createChooser(galleryIntent, "Select Image"), REQUEST_GALLERY);
                     break;
                 default:
@@ -194,15 +222,25 @@ public class QuestionDetailsActivity extends AppCompatActivity {
             switch (requestCode){
                 case REQUEST_CAMERA:
                     Bundle bundle = data.getExtras();
+                    Bitmap thumbnail = (Bitmap) data.getExtras().get("data");
+                    WeakReference<Bitmap> result1 = new WeakReference<Bitmap>(Bitmap.createScaledBitmap(thumbnail,
+                            thumbnail.getWidth(), thumbnail.getHeight(), false).copy(
+                            Bitmap.Config.RGB_565, true));
+                    Bitmap bm=result1.get();
                     final Bitmap bitmap = (Bitmap) bundle.get("data");
 //                    convert bitmap to bytes[]
-                    ByteArrayOutputStream baos = new ByteArrayOutputStream();
-                    bitmap.compress(Bitmap.CompressFormat.JPEG, 100, baos);
-                    imageBytes = baos.toByteArray();
-
-                    uploadPhoto(imageBytes);
+//                    ByteArrayOutputStream baos = new ByteArrayOutputStream();
+//                    bitmap.compress(Bitmap.CompressFormat.PNG, 100, baos);
+//                    imageBytes = baos.toByteArray();
+//                    another method
+//                    int size = bitmap.getRowBytes() * bitmap.getHeight();
+//                    ByteBuffer byteBuffer = ByteBuffer.allocate(size);
+//                    bitmap.copyPixelsToBuffer(byteBuffer);
+//                    imageBytes = byteBuffer.array();
+//
+//                    uploadPhoto(imageBytes);
 //                    set image locally & visibility of imgView and button
-                    imgQuestionPhoto.setImageBitmap(bitmap);
+                    imgQuestionPhoto.setImageBitmap(bm);
                     imgQuestionPhoto.setVisibility(View.VISIBLE);
                     btnUploadPhoto.setVisibility(View.GONE);
                     break;
@@ -237,7 +275,8 @@ public class QuestionDetailsActivity extends AppCompatActivity {
             Toast.makeText(this, "image bytes[] was empty!", Toast.LENGTH_SHORT).show();
             return;
         }
-        StorageReference photoRef = storageRef.child(examUid).child(String.valueOf(questionPosition));
+        Log.d(TAG, "uploadPhoto: STARTED");
+        photoRef = storageRef.child(examUid).child(String.valueOf(questionPosition));
         UploadTask uploadTask = photoRef.putBytes(imageBytes);
         uploadTask.addOnFailureListener(exception-> {
             Log.d(TAG, "uploadPhoto: "+ exception.getLocalizedMessage());
@@ -245,7 +284,7 @@ public class QuestionDetailsActivity extends AppCompatActivity {
         });
         uploadTask.addOnSuccessListener(taskSnapshot -> {
             Log.d(TAG, "uploadPhoto: "+ taskSnapshot.toString());
-            Toast.makeText(this, taskSnapshot.toString(), Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "Uploaded!", Toast.LENGTH_SHORT).show();
         });
     }
 
