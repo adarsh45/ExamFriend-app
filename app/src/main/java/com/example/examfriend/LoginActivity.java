@@ -14,6 +14,7 @@ import com.google.firebase.FirebaseException;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.auth.PhoneAuthCredential;
+import com.google.firebase.auth.PhoneAuthOptions;
 import com.google.firebase.auth.PhoneAuthProvider;
 
 import java.util.concurrent.TimeUnit;
@@ -84,13 +85,22 @@ public class LoginActivity extends AppCompatActivity {
 
 
     public void sendOtp() {
-        PhoneAuthProvider.getInstance().verifyPhoneNumber(
-                phone,
-                60,
-                TimeUnit.SECONDS,
-                this,
-                mCallback
-        );
+//        PhoneAuthProvider.getInstance().verifyPhoneNumber(
+//                phone,
+//                60,
+//                TimeUnit.SECONDS,
+//                this,
+//                mCallback
+//        );
+
+        PhoneAuthOptions options =
+                PhoneAuthOptions.newBuilder(mAuth)
+                        .setPhoneNumber(phone)       // Phone number to verify
+                        .setTimeout(60L, TimeUnit.SECONDS) // Timeout and unit
+                        .setActivity(this)                 // Activity (for callback binding)
+                        .setCallbacks(mCallback)          // OnVerificationStateChangedCallbacks
+                        .build();
+        PhoneAuthProvider.verifyPhoneNumber(options);
 
     }
 

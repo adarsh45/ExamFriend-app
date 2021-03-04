@@ -121,7 +121,6 @@ public class DetailsDialog extends Dialog {
     }
 
     private void updateDatabase(StudentData data){
-
         rootRef.child(data.getUid()).setValue(data).addOnCompleteListener(task -> {
             if (task.isSuccessful()){
                 Intent intent = new Intent(context, MainActivity.class);

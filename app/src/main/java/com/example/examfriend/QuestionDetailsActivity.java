@@ -11,7 +11,6 @@ import androidx.core.content.ContextCompat;
 import android.Manifest;
 import android.app.Activity;
 import android.content.Context;
-import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
@@ -21,25 +20,25 @@ import android.provider.MediaStore;
 import android.text.TextUtils;
 import android.util.Log;
 import android.view.View;
-import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageButton;
-import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
 
 import com.bumptech.glide.Glide;
 import com.example.examfriend.Utils.Utils;
 import com.example.examfriend.pojos.Question;
+import com.example.examfriend.pojos.StudentData;
 import com.github.chrisbanes.photoview.PhotoView;
-import com.google.android.gms.tasks.OnCompleteListener;
-import com.google.android.gms.tasks.OnFailureListener;
-import com.google.android.gms.tasks.OnSuccessListener;
-import com.google.android.gms.tasks.Task;
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
+import com.google.firebase.database.DataSnapshot;
+import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.database.ValueEventListener;
 import com.google.firebase.storage.FirebaseStorage;
 import com.google.firebase.storage.StorageReference;
 import com.google.firebase.storage.UploadTask;
@@ -49,7 +48,6 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.lang.ref.WeakReference;
-import java.nio.ByteBuffer;
 
 public class QuestionDetailsActivity extends AppCompatActivity {
     
@@ -58,13 +56,14 @@ public class QuestionDetailsActivity extends AppCompatActivity {
     private static final int REQUEST_GALLERY = 12;
 
     private Question questionObject;
+    private StudentData userData;
     private int questionPosition;
     private String examUid;
 
 //    views
     private ConstraintLayout layout;
     private InputMethodManager imm;
-    private TextView tvQuestionTitle, tvAnswerText;
+    private TextView tvQuestionTitle, tvAnswerText, tvQueAuthor, tvImgAuthor, tvAnsAuthor;
     private EditText etQuestion, etAnswer;
     private ImageButton btnEditAnswer, btnChangeAnswer, btnCancelChangeAnswer;
     private ImageButton btnEditQuestion, btnChangeQuestion, btnCancelChangeQuestion;
@@ -72,9 +71,25 @@ public class QuestionDetailsActivity extends AppCompatActivity {
     private Button btnUploadPhoto;
 
 //    firebase
-    private DatabaseReference rootRef = FirebaseDatabase.getInstance().getReference("Questions");
+    private DatabaseReference questionsRef = FirebaseDatabase.getInstance().getReference("Questions");
+    private DatabaseReference usersRef = FirebaseDatabase.getInstance().getReference("Users");
     private StorageReference storageRef = FirebaseStorage.getInstance().getReference("Exams");
     private StorageReference photoRef;
+
+    private FirebaseAuth mAuth = FirebaseAuth.getInstance();
+    private FirebaseUser currentUser = mAuth.getCurrentUser();
+
+    @Override
+    protected void onStart() {
+        super.onStart();
+        currentUser = mAuth.getCurrentUser();
+        if (currentUser == null){
+            mAuth.signOut();
+            Intent i = new Intent(QuestionDetailsActivity.this, LoginActivity.class);
+            startActivity(i);
+            finish();
+        }
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -82,6 +97,7 @@ public class QuestionDetailsActivity extends AppCompatActivity {
         setContentView(R.layout.activity_question_details);
 
         initViews();
+        getUser();
 
         if (getIntent().getExtras() != null){
             questionPosition = getIntent().getIntExtra("questionPosition",-1);
@@ -95,6 +111,27 @@ public class QuestionDetailsActivity extends AppCompatActivity {
         setTexts();
     }
 
+    private void getUser() {
+        if (currentUser!=null){
+            usersRef.child(currentUser.getUid()).addListenerForSingleValueEvent(new ValueEventListener() {
+                @Override
+                public void onDataChange(@NonNull DataSnapshot snapshot) {
+                    if (snapshot.exists()){
+                        userData = snapshot.getValue(StudentData.class);
+                    } else {
+                        Log.d(TAG, "onDataChange: Snapshot is empty!");
+                    }
+                }
+
+                @Override
+                public void onCancelled(@NonNull DatabaseError error) {
+                    Log.d(TAG, "onCancelled: "+ error.getMessage());
+                    Toast.makeText(QuestionDetailsActivity.this, error.getMessage(), Toast.LENGTH_SHORT).show();
+                }
+            });
+        }
+    }
+
     private void setTexts() {
         if (questionObject == null){
             Toast.makeText(this, "Question could not be loaded! Try again!", Toast.LENGTH_SHORT).show();
@@ -104,10 +141,13 @@ public class QuestionDetailsActivity extends AppCompatActivity {
         etQuestion.setText(questionObject.getQueTitle());
         tvAnswerText.setText(questionObject.getQueAnswer());
         etAnswer.setText(questionObject.getQueAnswer());
+//        authors
+         tvQueAuthor.setText(questionObject.getQueAuthor() != null ? getString(R.string.edited_by) + questionObject.getQueAuthor(): "");
+        tvImgAuthor.setText(questionObject.getQueImgAuthor() != null ? getString(R.string.edited_by) + questionObject.getQueImgAuthor(): "");
+        tvAnsAuthor.setText(questionObject.getAnswerAuthor() != null ? getString(R.string.edited_by) + questionObject.getAnswerAuthor(): "");
 
         if (!TextUtils.isEmpty(questionObject.getQueImgUrl())){
             imgQuestionPhoto.setVisibility(View.VISIBLE);
-            btnUploadPhoto.setVisibility(View.GONE);
         }
 
 //        check if photo is present
@@ -115,7 +155,6 @@ public class QuestionDetailsActivity extends AppCompatActivity {
         photoRef.getDownloadUrl()
                 .addOnSuccessListener(uri -> {
 //                file is present
-                    btnUploadPhoto.setVisibility(View.GONE);
                     imgQuestionPhoto.setVisibility(View.VISIBLE);
                     Glide.with(this).load(uri.toString()).into(imgQuestionPhoto);
                     Log.d(TAG, "onSuccess: File is present already!");
@@ -133,6 +172,9 @@ public class QuestionDetailsActivity extends AppCompatActivity {
         layout = findViewById(R.id.root_layout);
         tvQuestionTitle = findViewById(R.id.tv_que_title);
         tvAnswerText = findViewById(R.id.tv_answer);
+        tvQueAuthor = findViewById(R.id.tv_que_author);
+        tvImgAuthor = findViewById(R.id.tv_img_author);
+        tvAnsAuthor = findViewById(R.id.tv_ans_author);
         etQuestion = findViewById(R.id.et_question);
         etAnswer = findViewById(R.id.et_answer);
 //        photo
@@ -229,16 +271,16 @@ public class QuestionDetailsActivity extends AppCompatActivity {
                     Bitmap bm=result1.get();
                     final Bitmap bitmap = (Bitmap) bundle.get("data");
 //                    convert bitmap to bytes[]
-//                    ByteArrayOutputStream baos = new ByteArrayOutputStream();
-//                    bitmap.compress(Bitmap.CompressFormat.PNG, 100, baos);
-//                    imageBytes = baos.toByteArray();
+                    ByteArrayOutputStream baos = new ByteArrayOutputStream();
+                    bitmap.compress(Bitmap.CompressFormat.PNG, 100, baos);
+                    imageBytes = baos.toByteArray();
 //                    another method
 //                    int size = bitmap.getRowBytes() * bitmap.getHeight();
 //                    ByteBuffer byteBuffer = ByteBuffer.allocate(size);
 //                    bitmap.copyPixelsToBuffer(byteBuffer);
 //                    imageBytes = byteBuffer.array();
 //
-//                    uploadPhoto(imageBytes);
+                    uploadPhoto(imageBytes);
 //                    set image locally & visibility of imgView and button
                     imgQuestionPhoto.setImageBitmap(bm);
                     imgQuestionPhoto.setVisibility(View.VISIBLE);
@@ -283,8 +325,17 @@ public class QuestionDetailsActivity extends AppCompatActivity {
             Toast.makeText(this, exception.getLocalizedMessage(), Toast.LENGTH_SHORT).show();
         });
         uploadTask.addOnSuccessListener(taskSnapshot -> {
+            if (userData != null){
+                questionObject.setQueImgAuthor(userData.getName());
+                Log.d(TAG, "uploadPhoto: DISPLAY NAME: "+ currentUser.getDisplayName());
+            } else {
+                Log.d(TAG, "uploadPhoto: USER NOT FOUND");
+                Toast.makeText(this, "User not found", Toast.LENGTH_SHORT).show();
+                return;
+            }
             Log.d(TAG, "uploadPhoto: "+ taskSnapshot.toString());
             Toast.makeText(this, "Uploaded!", Toast.LENGTH_SHORT).show();
+            tvImgAuthor.setText(getString(R.string.edited_by) + questionObject.getQueImgAuthor());
         });
     }
 
@@ -321,16 +372,26 @@ public class QuestionDetailsActivity extends AppCompatActivity {
                 Toast.makeText(this, "Exam not found! Try again!", Toast.LENGTH_SHORT).show();
                 return;
             }
-            rootRef.child(examUid).child(String.valueOf(questionPosition)).child("queTitle")
-                    .setValue(updatedQuestion).addOnCompleteListener(task->{
+            questionObject.setQueTitle(updatedQuestion);
+            if (userData != null){
+                questionObject.setQueAuthor(userData.getName());
+            } else {
+                Log.d(TAG, "uploadPhoto: USER NOT FOUND");
+                Toast.makeText(this, "User not found", Toast.LENGTH_SHORT).show();
+                return;
+            }
+
+            questionsRef.child(examUid)
+                    .child(String.valueOf(questionPosition))
+                    .setValue(questionObject).addOnCompleteListener(task->{
                 if (task.isSuccessful()){
                     Toast.makeText(this, "Updated", Toast.LENGTH_SHORT).show();
-                    questionObject.setQueTitle(updatedQuestion);
                     tvQuestionTitle.setText(updatedQuestion);
+                    tvQueAuthor.setText(getString(R.string.edited_by)+questionObject.getQueAuthor());
                     etQuestion.setText(updatedQuestion);
                 } else {
                     Log.d(TAG, "change: UPDATE QUESTION FAILED!");
-                    Toast.makeText(this, "Failure!", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(this, "Failed to update!", Toast.LENGTH_SHORT).show();
                 }
             });
 
@@ -352,16 +413,26 @@ public class QuestionDetailsActivity extends AppCompatActivity {
                 Toast.makeText(this, "Exam not found! Try again!", Toast.LENGTH_SHORT).show();
                 return;
             }
-            rootRef.child(examUid).child(String.valueOf(questionPosition)).child("queAnswer")
-                    .setValue(updatedAnswer).addOnCompleteListener(task->{
+
+            questionObject.setQueAnswer(updatedAnswer);
+            if (userData != null){
+                questionObject.setAnswerAuthor(userData.getName());
+            } else {
+                Log.d(TAG, "uploadPhoto: USER NOT FOUND");
+                Toast.makeText(this, "User not found", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            questionsRef.child(examUid)
+                    .child(String.valueOf(questionPosition))
+                    .setValue(questionObject).addOnCompleteListener(task->{
                 if (task.isSuccessful()){
                     Toast.makeText(this, "Updated", Toast.LENGTH_SHORT).show();
-                    questionObject.setQueAnswer(updatedAnswer);
                     tvAnswerText.setText(updatedAnswer);
+                    tvAnsAuthor.setText(getString(R.string.edited_by) + questionObject.getAnswerAuthor());
                     etAnswer.setText(updatedAnswer);
                 } else {
                     Log.d(TAG, "change: UPDATE QUESTION FAILED!");
-                    Toast.makeText(this, "Failure!", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(this, "Failed to update!", Toast.LENGTH_SHORT).show();
                 }
             });
 

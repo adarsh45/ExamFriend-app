@@ -1,3 +1,4 @@
 <resources>
     <string name="app_name">ExamFriend</string>
+    <string name="edited_by">Edited by:</string>
 </resources>

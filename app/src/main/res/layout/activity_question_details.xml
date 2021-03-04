@@ -78,7 +78,6 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginVertical="8dp"
-            android:text="hello"
             android:textSize="20sp" />
         <EditText
             android:id="@+id/et_question"
@@ -88,6 +87,11 @@
             android:hint="type the changed question..."
             android:padding="8dp"
             android:textSize="20sp"/>
+
+        <TextView
+            android:id="@+id/tv_que_author"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"/>
     </LinearLayout>
 
 
@@ -95,26 +99,40 @@
         android:id="@+id/linearLayout3"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
         android:orientation="vertical"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/linearLayout">
 
+        <TextView
+            android:id="@+id/tv_img_hint"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center"
+            android:text="Feel free to zoom or double tap image if not visible properly!" />
+
         <com.github.chrisbanes.photoview.PhotoView
             android:id="@+id/img_que_photo"
-            android:visibility="gone"
             android:layout_width="match_parent"
-            android:layout_height="240dp" />
+            android:layout_height="240dp"
+            android:visibility="gone" />
 
         <Button
             android:id="@+id/btn_upload_photo"
-            android:onClick="selectPhoto"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_gravity="center"
             android:layout_marginVertical="24dp"
             android:drawableLeft="@drawable/ic_baseline_linked_camera_24"
-            android:text="Capture / Upload Photo"/>
+            android:onClick="selectPhoto"
+            android:text="Capture / Upload Photo" />
+
+        <TextView
+            android:id="@+id/tv_img_author"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginHorizontal="8dp"/>
 
     </LinearLayout>
 
@@ -191,6 +209,12 @@
             android:padding="8dp"
             android:textSize="20sp"
             android:visibility="gone" />
+
+        <TextView
+            android:id="@+id/tv_ans_author"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginHorizontal="8dp"/>
     </LinearLayout>
 
 </androidx.constraintlayout.widget.ConstraintLayout>

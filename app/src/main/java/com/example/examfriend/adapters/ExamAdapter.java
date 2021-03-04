@@ -42,7 +42,6 @@ public class ExamAdapter extends RecyclerView.Adapter<ExamAdapter.ExamViewHolder
         holder.tvExamAuthorName.setText(examObj.getAuthorName());
 
         holder.itemView.setOnClickListener(view->{
-            Toast.makeText(context, examObj.getExamTitle(), Toast.LENGTH_SHORT).show();
             Intent intent = new Intent(context, ExamDetailsActivity.class);
             intent.putExtra("examObject", examObj);
             intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);

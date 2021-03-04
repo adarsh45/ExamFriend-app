@@ -6,6 +6,7 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import android.os.Bundle;
+import android.util.Log;
 import android.widget.Toast;
 
 import com.example.examfriend.adapters.QuestionsAdapter;
@@ -21,6 +22,8 @@ import java.util.ArrayList;
 import java.util.HashMap;
 
 public class ExamDetailsActivity extends AppCompatActivity {
+
+    private static final String TAG = "ExamDetailsActivity";
 
     private Exam exam;
     private RecyclerView rvQuestions;
@@ -64,7 +67,7 @@ public class ExamDetailsActivity extends AppCompatActivity {
                     for (DataSnapshot snap: snapshot.getChildren()){
                         questionHashMap.put(String.valueOf(i++), snap.getValue(Question.class));
                     }
-                    Toast.makeText(ExamDetailsActivity.this, "got from DB!", Toast.LENGTH_SHORT).show();
+                    Log.d(TAG, "got from DB!");
                 } else {
 //                    data is not present in db, create dummy and save it
                     for (int i=0; i<Integer.parseInt(exam.getExamQueCount());i++){
@@ -86,7 +89,7 @@ public class ExamDetailsActivity extends AppCompatActivity {
 
             @Override
             public void onCancelled(@NonNull DatabaseError error) {
-
+                Log.d(TAG, "onCancelled: "+ error.getMessage());
             }
         });
     }

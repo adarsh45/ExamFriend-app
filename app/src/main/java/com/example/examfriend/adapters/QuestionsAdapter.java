@@ -53,7 +53,6 @@ public class QuestionsAdapter  extends RecyclerView.Adapter<QuestionsAdapter.Que
 
 //        on click listener for view holder
         holder.itemView.setOnClickListener(view->{
-            Toast.makeText(context, "Hello", Toast.LENGTH_SHORT).show();
             Intent intent = new Intent(context, QuestionDetailsActivity.class);
             intent.putExtra("questionPosition", position);
             intent.putExtra("questionObject", question);
